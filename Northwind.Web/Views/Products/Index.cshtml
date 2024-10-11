@@ -1,0 +1,65 @@
+﻿
+@model IEnumerable<Northwind.Domain.Entities.Product>
+
+@{
+    ViewData["Title"] = "Products";
+}
+@functions {
+    public string SplitCamelCase(string input)
+    {
+        return System.Text.RegularExpressions.Regex.Replace(input, "([a-z])([A-Z])", "$1 $2");
+    }
+}
+<h1 class="title">Product list</h1>
+<div class="container box">
+    <div class="content card-section-container">
+        <table class="table is-fullwidth is-striped is-hoverable">
+            <thead>
+                <tr>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.ProductName).ToString())</th>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.Supplier.CompanyName).ToString())</th>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.Category.CategoryName).ToString())</th>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.QuantityPerUnit).ToString())</th>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.UnitPrice).ToString())</th>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.UnitsInStock).ToString())</th>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.UnitsOnOrder).ToString())</th>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.ReorderLevel).ToString())</th>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.Discontinued).ToString())</th>
+                    <th>Edit</th>
+            </thead>
+            <tfoot>
+                <tr>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.ProductName).ToString())</th>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.Supplier.CompanyName).ToString())</th>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.Category.CategoryName).ToString())</th>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.QuantityPerUnit).ToString())</th>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.UnitPrice).ToString())</th>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.UnitsInStock).ToString())</th>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.UnitsOnOrder).ToString())</th>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.ReorderLevel).ToString())</th>
+                    <th>@SplitCamelCase(Html.DisplayNameFor(model => model.Discontinued).ToString())</th>
+                    <th>Edit</th>
+                </tr>
+            </tfoot>
+            <tbody>
+                @foreach (var product in Model)
+                {
+                    <tr>
+                        <td>@product.ProductName</td>
+                        <td>@product.Supplier?.CompanyName</td>
+                        <td>@product.Category?.CategoryName</td>
+                        <td>@product.QuantityPerUnit</td>
+                        <td>@product.UnitPrice?.ToString("C")</td>
+                        <td>@product.UnitsInStock</td>
+                        <td>@product.UnitsOnOrder</td>
+                        <td>@product.ReorderLevel</td>
+                        <td>@(product.Discontinued ? "Yes" : "No")</td>
+                        <td>
+                            <a class="button card-button"  asp-action="Edit" asp-route-id="@product.ProductId">Edit</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

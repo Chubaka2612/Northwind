@@ -1,0 +1,48 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Northwind</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/menu.css" asp-append-version="true"  />
+    <link rel="stylesheet" href="~/css/common.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/cards.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/table.css" asp-append-version="true" />
+
+</head>
+<body>
+    <div class="section column">
+        <aside class="menu stylish-menu">
+            <p class="menu-label">
+                GENERAL MENU
+            </p>
+            <ul class="menu-list">
+                <li><a href="/">Home</a></li>
+                <li>
+                    <a href="#">Categories</a>
+                    <ul>
+                        <li><a href="/Categories/Index">List</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="#">Products</a>
+                    <ul>
+                        <li><a href="/Products/Index">List</a></li>
+                        <li><a href="/Products/Create">Add new</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </aside>
+    </div>
+    <div class="container mt-4">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js" asp-append-version="true"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js" asp-append-version="true"></script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>
