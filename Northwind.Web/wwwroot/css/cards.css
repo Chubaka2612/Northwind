@@ -64,3 +64,15 @@
         background-color: #0056b3;
         color: #fff;
     }
+
+.card-image {
+    width: 100px;
+    height: 100px;
+    object-fit: cover; /* Adjusts image scaling */
+    margin-top: 10px;
+}
+
+.no-image {
+    color: red;
+    font-style: italic;
+}

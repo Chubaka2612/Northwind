@@ -13,8 +13,9 @@
 
 	<ItemGroup>
     <ProjectReference Include="..\Northwind.Bll\Northwind.Bll.csproj" />
-    <ProjectReference Include="..\Northwind.Db.Dal\Northwind.Dal.csproj" />
+    <ProjectReference Include="..\Northwind.Dal\Northwind.Dal.csproj" />
     <ProjectReference Include="..\Northwind.Logger\Northwind.Logger.csproj" />
+    <ProjectReference Include="..\Northwind.Utils\Northwind.Utils.csproj" />
   </ItemGroup>
 	
 
