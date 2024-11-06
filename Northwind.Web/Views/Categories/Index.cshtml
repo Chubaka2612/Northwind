@@ -3,15 +3,28 @@
     ViewData["Title"] = "Categories";
 }
 
-<h1 class="title"> Our Categories</h1>
+<h1 class="title">Our Categories</h1>
 <div class="card-section-container">
     <div class="card-container">
-    @foreach (var category in Model)
-    {
-        <div class="card">
-            <h2 class="card-title">@category.CategoryName</h2>
-            <p class="card-description">@category.Description</p>
-        </div>
-    }
-</div>
+        @foreach (var category in Model)
+        {
+            <div class="card">
+                <h2 class="card-title">@category.CategoryName</h2>
+                <p class="card-description">@category.Description</p>
+
+                <a asp-action="Image" asp-route-id="@category.CategoryId">
+                    @if (!string.IsNullOrEmpty(category.Base64String))
+                    {
+                        <img src="@String.Format("data:image/jpg;base64,{0}", category.Base64String)" alt="Category Image" class="card-image" />
+                    }
+                    else
+                    {
+                        <span>No Image Available</span>
+                    }
+                </a>
+
+                <a asp-action="Edit" asp-route-id="@category.CategoryId" class="button card-button">Edit</a>
+            </div>
+        }
+    </div>
 </div>
