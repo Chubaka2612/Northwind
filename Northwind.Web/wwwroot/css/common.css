@@ -62,3 +62,20 @@ a.card-button {
     width: 80px;
     text-align: center; 
 }
+.breadcrumb-container {
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.breadcrumb-item {
+    display: inline;
+    font-size: 1rem;
+}
+
+    .breadcrumb-item a {
+        color: #343a40;
+    }
+
+        .breadcrumb-item a:hover {
+            color: #cccccc;
+        }

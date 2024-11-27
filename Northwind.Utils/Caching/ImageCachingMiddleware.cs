@@ -112,6 +112,7 @@ namespace Northwind.Utils.Caching
                 "image/jpeg" => ".jpg",
                 "image/png" => ".png",
                 "image/gif" => ".gif",
+                "image/bmp" => ".bmp",
                 _ => ".img"
             };
         }
@@ -129,6 +130,7 @@ namespace Northwind.Utils.Caching
                 ".jpg" => "image/jpeg",
                 ".png" => "image/png",
                 ".gif" => "image/gif",
+                ".bmp" => "image/bmp",
                 _ => "application/octet-stream"
             };
         }
