@@ -1,165 +1,217 @@
 ﻿
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Moq;
 using Northwind.Bll.Abstractions;
 using Northwind.Web.Controllers;
 using NUnit.Framework;
 using Northwind.Domain.Entities;
-using Northwind.Web.Models;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+
 
 namespace Northwind.Tests.Unit.Controllers;
 
 [TestFixture]
 public class ProductsControllerTests
 {
-    private ProductsController _controller;
     private Mock<IProductService> _mockProductService;
     private Mock<ICategoryService> _mockCategoryService;
     private Mock<ISupplierService> _mockSupplierService;
-    private IConfiguration _configuration;
+    private Mock<ILogger<ProductsController>> _mockLogger;
+    private IConfiguration _mockConfiguration;
+    private ProductsController _controller;
 
     [SetUp]
-    public void Setup()
+    public void SetUp()
     {
-       
-        var inMemorySettings = new Dictionary<string, string> { { "ProductSettings:MaxProductCount", "10" } };
-        _configuration = new ConfigurationBuilder().AddInMemoryCollection(inMemorySettings).Build();
-
         _mockProductService = new Mock<IProductService>();
         _mockCategoryService = new Mock<ICategoryService>();
         _mockSupplierService = new Mock<ISupplierService>();
+        _mockLogger = new Mock<ILogger<ProductsController>>();
+        _mockConfiguration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string>
+            {
+                    { "ProductSettings:MaxProductCount", "10" }
+            })
+            .Build();
 
-      
-        _controller = new ProductsController(_configuration, _mockProductService.Object, _mockCategoryService.Object, _mockSupplierService.Object);
+        _controller = new ProductsController(
+            _mockConfiguration,
+            _mockProductService.Object,
+            _mockCategoryService.Object,
+            _mockSupplierService.Object,
+            _mockLogger.Object
+        );
     }
 
+    #region Positive Tests
+
     [Test]
-    public async Task Index_ReturnsViewResult_WithProductList()
+    public async Task GetProducts_ReturnsOkWithProducts()
     {
         // Arrange
-        var products = new List<Product> { new Product() }; 
-        _mockProductService.Setup(service => service.GetProductsAsync(It.IsAny<CancellationToken>(), It.IsAny<int>()))
-                           .ReturnsAsync(products);
+        var sampleProducts = new List<Product>
+            {
+                new Product { ProductId = 1, ProductName = "Product A" },
+                new Product { ProductId = 2, ProductName = "Product B" }
+            };
+        _mockProductService.Setup(s => s.GetProductsAsync(It.IsAny<CancellationToken>(), It.IsAny<int>()))
+                           .ReturnsAsync(sampleProducts);
 
         // Act
-        var result = await _controller.Index(CancellationToken.None) as ViewResult;
+        var result = await _controller.GetProducts(CancellationToken.None) as OkObjectResult;
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        Assert.That(products, Is.EqualTo(result.Model));
+        Assert.That(result.StatusCode, Is.EqualTo(200));
+        Assert.That(result.Value, Is.Not.Null);
     }
 
     [Test]
-    public async Task Create_GET_ReturnsViewResult_WithProductModel()
+    public async Task GetProduct_ValidId_ReturnsOk()
     {
         // Arrange
-        _mockCategoryService.Setup(service => service.GetCategoriesAsync(It.IsAny<CancellationToken>()))
-                            .ReturnsAsync(new List<Category>());
-        _mockSupplierService.Setup(service => service.GetSuppliersAsync(It.IsAny<CancellationToken>()))
-                            .ReturnsAsync(new List<Supplier>());
+        var sampleProduct = new Product { ProductId = 1, ProductName = "Product A" };
+        _mockProductService.Setup(s => s.GetProductAsync(1, It.IsAny<CancellationToken>()))
+                           .ReturnsAsync(sampleProduct);
 
         // Act
-        var result = await _controller.Create(CancellationToken.None) as ViewResult;
+        var result = await _controller.GetProduct(1, CancellationToken.None) as OkObjectResult;
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        var model = result.Model as ProductModel;
-        Assert.That(model, Is.Not.Null);
-        Assert.That(model.Categories, Is.Not.Null);
-        Assert.That(model.Suppliers, Is.Not.Null);
+        Assert.That(result.StatusCode, Is.EqualTo(200));
+        Assert.That(result.Value, Is.EqualTo(sampleProduct));
     }
 
     [Test]
-    public async Task Create_POST_RedirectsToIndex_WhenModelIsValid()
+    public async Task PostProduct_ValidProduct_ReturnsCreated()
     {
         // Arrange
-        var productModel = new ProductModel { Product = new Product() };
-        _mockProductService.Setup(service => service.AddProductAsync(It.IsAny<Product>()));
+        var newProduct = new Product { ProductName = "New Product", SupplierId = 1, CategoryId = 1 };
+        _mockProductService.Setup(s => s.AddProductAsync(newProduct))
+                           .ReturnsAsync(1);
 
         // Act
-        var result = _controller.Create(productModel, CancellationToken.None) as RedirectToActionResult;
+        var result = await _controller.PostProduct(newProduct) as CreatedAtActionResult;
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        Assert.That("Index", Is.EqualTo(result.ActionName));
-        _mockProductService.Verify(service => service.AddProductAsync(productModel.Product), Times.Once);
+        Assert.That(result.StatusCode, Is.EqualTo(201));
+        Assert.That(result.Value, Is.EqualTo(1));
     }
 
     [Test]
-    public async Task Edit_GET_ReturnsNotFound_WhenIdIsNull()
+    public async Task PutProduct_ValidProduct_ReturnsNoContent()
     {
+        // Arrange
+        var updatedProduct = new Product { ProductId = 1, ProductName = "Updated Product" };
+        _mockProductService.Setup(s => s.UpdateProductAsync(updatedProduct))
+                           .ReturnsAsync(true);
+
         // Act
-        var result = await _controller.Edit(null, CancellationToken.None) as NotFoundResult;
+        var result = await _controller.PutProduct(1, updatedProduct) as NoContentResult;
 
         // Assert
         Assert.That(result, Is.Not.Null);
+        Assert.That(result.StatusCode, Is.EqualTo(204));
     }
 
     [Test]
-    public async Task Edit_GET_ReturnsNotFound_WhenProductDoesNotExist()
+    public async Task DeleteProduct_ValidId_ReturnsNoContent()
     {
         // Arrange
-        _mockProductService.Setup(service => service.GetProductAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+        var existingProduct = new Product { ProductId = 1 };
+        _mockProductService.Setup(s => s.GetProductAsync(1, It.IsAny<CancellationToken>()))
+                           .ReturnsAsync(existingProduct);
+        _mockProductService.Setup(s => s.DeleteProductAsync(existingProduct))
+                           .ReturnsAsync(true);
+
+        // Act
+        var result = await _controller.DeleteProduct(1) as NoContentResult;
+
+        // Assert
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.StatusCode, Is.EqualTo(204));
+    }
+
+    #endregion
+
+    #region Negative Tests
+
+    [Test]
+    public async Task GetProduct_InvalidId_ReturnsNotFound()
+    {
+        // Arrange
+        _mockProductService.Setup(s => s.GetProductAsync(99, It.IsAny<CancellationToken>()))
                            .ReturnsAsync((Product)null);
 
         // Act
-        var result = await _controller.Edit(1, CancellationToken.None) as NotFoundResult;
+        var result = await _controller.GetProduct(99, CancellationToken.None) as NotFoundObjectResult;
 
         // Assert
         Assert.That(result, Is.Not.Null);
+        Assert.That(result.StatusCode, Is.EqualTo(404));
+        Assert.That(result.Value, Is.EqualTo("Product with ID 99 not found."));
     }
 
     [Test]
-    public async Task Edit_GET_ReturnsViewResult_WithProductModel()
+    public async Task PostProduct_NullProduct_ReturnsBadRequest()
     {
-        // Arrange
-        var product = new Product { ProductId = 1 };
-        _mockProductService.Setup(service => service.GetProductAsync(1, It.IsAny<CancellationToken>()))
-                           .ReturnsAsync(product);
-        _mockCategoryService.Setup(service => service.GetCategoriesAsync(It.IsAny<CancellationToken>()))
-                            .ReturnsAsync(new List<Category>());
-        _mockSupplierService.Setup(service => service.GetSuppliersAsync(It.IsAny<CancellationToken>()))
-                            .ReturnsAsync(new List<Supplier>());
-
         // Act
-        var result = await _controller.Edit(1, CancellationToken.None) as ViewResult;
+        var result = await _controller.PostProduct(null) as BadRequestObjectResult;
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        var model = result.Model as ProductModel;
-        Assert.That(model, Is.Not.Null);
-        Assert.That(product, Is.EqualTo(model.Product));
+        Assert.That(result.StatusCode, Is.EqualTo(400));
     }
 
     [Test]
-    public async Task Edit_POST_RedirectsToIndex_WhenModelIsValid()
+    public async Task PutProduct_IdMismatch_ReturnsBadRequest()
     {
         // Arrange
-        var productModel = new ProductModel { Product = new Product { ProductId = 1 } };
-        _mockProductService.Setup(service => service.UpdateProductAsync(It.IsAny<Product>()));
+        var product = new Product { ProductId = 1, ProductName = "Product A" };
 
         // Act
-        var result = await _controller.Edit(1, productModel) as RedirectToActionResult;
+        var result = await _controller.PutProduct(2, product) as BadRequestObjectResult;
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        Assert.That("Index", Is.EqualTo(result.ActionName));
-        _mockProductService.Verify(service => service.UpdateProductAsync(productModel.Product), Times.Once);
+        Assert.That(result.StatusCode, Is.EqualTo(400));
+        Assert.That(result.Value, Is.EqualTo("Product ID mismatch."));
     }
 
     [Test]
-    public async Task Edit_POST_ReturnsViewResult_WhenModelIsInvalid()
+    public async Task DeleteProduct_InvalidId_ReturnsNotFound()
     {
         // Arrange
-        var productModel = new ProductModel { Product = new Product { ProductId = 1 } };
-        _controller.ModelState.AddModelError("Error", "Model is invalid");
+        _mockProductService.Setup(s => s.GetProductAsync(99, It.IsAny<CancellationToken>()))
+                           .ReturnsAsync((Product)null);
 
         // Act
-        var result = await _controller.Edit(1, productModel) as ViewResult;
+        var result = await _controller.DeleteProduct(99) as NotFoundObjectResult;
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        Assert.That(productModel, Is.EqualTo(result.Model));
+        Assert.That(result.StatusCode, Is.EqualTo(404));
+        Assert.That(result.Value, Is.EqualTo("Product with ID 99 not found."));
     }
+
+    [Test]
+    public async Task GetProducts_ThrowsException_ReturnsServerError()
+    {
+        // Arrange
+        _mockProductService.Setup(s => s.GetProductsAsync(It.IsAny<CancellationToken>(), It.IsAny<int>()))
+                           .ThrowsAsync(new System.Exception("Database error"));
+
+        // Act
+        var result = await _controller.GetProducts(CancellationToken.None) as ObjectResult;
+
+        // Assert
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.StatusCode, Is.EqualTo(500));
+        Assert.That(result.Value, Is.EqualTo("An error occurred while fetching products."));
+    }
+
+    #endregion
 }

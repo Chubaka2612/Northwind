@@ -1,101 +1,140 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Northwind.Bll.Abstractions;
 using Northwind.Domain.Entities;
-using Northwind.Web.Models;
 
 namespace Northwind.Web.Controllers
 {
-    public class ProductsController : Controller
+    [ApiController]
+    [Route("api/northwind/products")]
+    public class ProductsController : ControllerBase
     {
         private readonly IProductService _productService;
         private readonly ICategoryService _categoryService;
         private readonly ISupplierService _supplierService;
+        private readonly ILogger<ProductsController> _logger;
         private static int _amount;
 
-        public ProductsController(IConfiguration configuration, IProductService productService, ICategoryService categoryService, ISupplierService supplierService)
+        public ProductsController(
+            IConfiguration configuration,
+            IProductService productService,
+            ICategoryService categoryService,
+            ISupplierService supplierService,
+            ILogger<ProductsController> logger)
         {
-            _amount = configuration != null
-                ? configuration.GetValue<int>("ProductSettings:MaxProductCount")
-                : throw new ArgumentNullException(nameof(configuration));
-            _productService = productService;
-            _categoryService = categoryService;
-            _supplierService = supplierService; 
-        }
-
-        public async Task<IActionResult> Index(CancellationToken cancellationToken)
-        {
-            return View(await _productService.GetProductsAsync(cancellationToken, _amount));
+            _amount = configuration?.GetValue<int>("ProductSettings:MaxProductCount")
+                     ?? throw new ArgumentNullException(nameof(configuration));
+            _productService = productService ?? throw new ArgumentNullException(nameof(productService));
+            _categoryService = categoryService ?? throw new ArgumentNullException(nameof(categoryService));
+            _supplierService = supplierService ?? throw new ArgumentNullException(nameof(supplierService));
+            _logger = logger;
         }
 
         [HttpGet]
-        public async Task<IActionResult> Create(CancellationToken cancellationToken)
+        public async Task<IActionResult> GetProducts(CancellationToken cancellationToken)
         {
-            var product = new ProductModel
+            try
             {
-                Product = new Product(),
-                Categories = await _categoryService.GetCategoriesAsync(cancellationToken),
-                Suppliers = await _supplierService.GetSuppliersAsync(cancellationToken)
-            };
-            return View(product);
+            
+                var products = await _productService.GetProductsAsync(cancellationToken, _amount);
+              
+                return Ok(products);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching products");
+                return StatusCode(500, "An error occurred while fetching products.");
+            }
+        }
+
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetProduct([FromRoute] int id, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var product = await _productService.GetProductAsync(id, cancellationToken);
+                if (product == null)
+                {
+                    return NotFound($"Product with ID {id} not found.");
+                }
+
+                return Ok(product);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching product by ID");
+                return StatusCode(500, "An error occurred while fetching the product.");
+            }
         }
 
         [HttpPost]
-        public IActionResult Create(ProductModel productModel, CancellationToken cancellationToken)
+        public async Task<IActionResult> PostProduct([FromBody] Product product)
         {
-            _productService.AddProductAsync(productModel.Product);
-            return RedirectToAction(nameof(Index));
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> Edit(int? id, CancellationToken cancellationToken)
-        {
-            if (id is null)
-            {
-                return NotFound();
-            }
-
-            var product = await _productService.GetProductAsync((int)id, cancellationToken);
             if (product is null)
             {
-                return NotFound();
+                return BadRequest("Product can't be null.");
             }
 
-            var categories = await _categoryService.GetCategoriesAsync(cancellationToken);
-            var suppliers = await _supplierService.GetSuppliersAsync(cancellationToken);
-
-            if (categories is null || suppliers is null)
+            try
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error while fetching related data.");
+                var productId = await _productService.AddProductAsync(product);
+                return CreatedAtAction(nameof(GetProduct), new { id = productId }, productId);
             }
-
-            var productModel = new ProductModel
+            catch (Exception ex)
             {
-                Product = product,
-                Categories = categories,
-                Suppliers = suppliers
-            };
-
-            return View(productModel);
-
+                _logger.LogError(ex, "Error adding product");
+                return StatusCode(500, "An error occurred while adding the product.");
+            }
         }
 
-        [HttpPost]
-        public async Task<IActionResult> Edit(int id, ProductModel productModel)
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> PutProduct([FromRoute] int id, [FromBody] Product product)
         {
-            var product = productModel.Product;
             if (id != product.ProductId)
             {
-                return NotFound();
+                return BadRequest("Product ID mismatch.");
             }
 
-            if (ModelState.IsValid)
+            try
             {
-                await _productService.UpdateProductAsync(product);
-                return RedirectToAction(nameof(Index));
-            }
+                var isUpdated = await _productService.UpdateProductAsync(product);
+                if (!isUpdated)
+                {
+                    return NotFound($"Product with ID {id} not found.");
+                }
 
-            return View(productModel);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating product");
+                return StatusCode(500, "An error occurred while updating the product.");
+            }
         }
 
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> DeleteProduct([FromRoute] int id)
+        {
+            try
+            {
+                var product = await _productService.GetProductAsync(id, CancellationToken.None);
+                if (product == null)
+                {
+                    return NotFound($"Product with ID {id} not found.");
+                }
+
+                var isDeleted = await _productService.DeleteProductAsync(product);
+                if (!isDeleted)
+                {
+                    return StatusCode(500, "An error occurred while deleting the product.");
+                }
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting product");
+                return StatusCode(500, "An error occurred while deleting the product.");
+            }
+        }
     }
 }

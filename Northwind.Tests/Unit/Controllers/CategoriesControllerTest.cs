@@ -3,162 +3,174 @@ using Moq;
 using NUnit.Framework;
 using Northwind.Bll.Abstractions;
 using Northwind.Web.Controllers;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Northwind.Domain.Entities;
-using NUnit.Framework.Legacy;
+using Microsoft.Extensions.Logging;
 
 namespace Northwind.Tests.Unit.Controllers;
 
 [TestFixture]
 public class CategoriesControllerTests
 {
+    private Mock<ICategoryService> _categoryServiceMock;
+    private Mock<ILogger<CategoriesController>> _loggerMock;
     private CategoriesController _controller;
-    private Mock<ICategoryService> _mockCategoryService;
 
     [SetUp]
     public void Setup()
     {
-        _mockCategoryService = new Mock<ICategoryService>();
-
-        _controller = new CategoriesController(_mockCategoryService.Object);
+        _categoryServiceMock = new Mock<ICategoryService>();
+        _loggerMock = new Mock<ILogger<CategoriesController>>();
+        _controller = new CategoriesController(_categoryServiceMock.Object, _loggerMock.Object);
     }
 
     [Test]
-    public async Task Index_ReturnsViewResult_WithCategoryList()
-    {
-        // Arrange
-        var categories = new List<Category> { new Category { CategoryId = 1 } };
-        _mockCategoryService.Setup(service => service.GetCategoriesAsync(It.IsAny<CancellationToken>()))
-                            .ReturnsAsync(categories);
-
-        // Act
-        var result = await _controller.Index(CancellationToken.None) as ViewResult;
-
-        // Assert
-        Assert.That(result, Is.Not.Null);
-        Assert.That(categories, Is.EqualTo(result.Model));
-    }
-
-    [Test]
-    public async Task Image_ReturnsNotFound_WhenCategoryIsNull()
-    {
-        // Arrange
-        _mockCategoryService.Setup(service => service.GetCategoriesAsync(It.IsAny<CancellationToken>()))
-                            .ReturnsAsync(new List<Category>());
-
-        // Act
-        var result = await _controller.Image(1) as NotFoundResult;
-
-        // Assert
-        Assert.That(result, Is.Not.Null);
-    }
-
-    [Test]
-    public async Task Image_ReturnsNotFound_WhenCategoryPictureIsNull()
+    public async Task GetCategories_ShouldReturnOk_WhenCategoriesExist()
     {
         // Arrange
         var categories = new List<Category>
-        {
-            new Category { CategoryId = 1, Picture = null }
-        };
-        _mockCategoryService.Setup(service => service.GetCategoriesAsync(It.IsAny<CancellationToken>()))
-                            .ReturnsAsync(categories);
+            {
+                new Category { CategoryId = 1, CategoryName = "Beverages" },
+                new Category { CategoryId = 2, CategoryName = "Condiments" }
+            };
+        _categoryServiceMock
+            .Setup(service => service.GetCategoriesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(categories);
 
         // Act
-        var result = await _controller.Image(1) as NotFoundResult;
+        var result = await _controller.GetCategories(CancellationToken.None);
 
         // Assert
-        Assert.That(result, Is.Not.Null);
+        Assert.That(result, Is.TypeOf<OkObjectResult>());
+        var okResult = result as OkObjectResult;
+        Assert.That(okResult.Value, Is.EqualTo(categories));
     }
 
     [Test]
-    public async Task Image_ReturnsFileResult_WhenImageExists()
+    public async Task GetCategories_ShouldReturnNotFound_WhenNoCategoriesExist()
     {
         // Arrange
-        var category = new Category
-        {
-            CategoryId = 1,
-            Picture = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        };
-        _mockCategoryService.Setup(service => service.GetCategoriesAsync(It.IsAny<CancellationToken>()))
-                            .ReturnsAsync(new List<Category> { category });
+        _categoryServiceMock
+            .Setup(service => service.GetCategoriesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Category>());
 
         // Act
-        var result = await _controller.Image(1) as FileResult;
-
-        // Assert   
-        Assert.That(result, Is.Not.Null);
-        Assert.That("image/bmp", Is.EqualTo(result.ContentType));
-    }
-
-    [Test]
-    public async Task Edit_GET_ReturnsNotFound_WhenCategoryDoesNotExist()
-    {
-        // Arrange
-        _mockCategoryService.Setup(service => service.GetCategoryAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                            .ReturnsAsync((Category)null);
-
-        // Act
-        var result = await _controller.Edit(1) as NotFoundResult;
+        var result = await _controller.GetCategories(CancellationToken.None);
 
         // Assert
-        Assert.That(result, Is.Not.Null);
+        Assert.That(result, Is.TypeOf<NotFoundObjectResult>());
+        var notFoundResult = result as NotFoundObjectResult;
+        Assert.That(notFoundResult.Value, Is.EqualTo("No categories available."));
     }
 
     [Test]
-    public async Task Edit_GET_ReturnsViewResult_WithCategory()
+    public async Task GetCategories_ShouldReturnInternalServerError_OnException()
+    {
+        // Arrange
+        _categoryServiceMock
+            .Setup(service => service.GetCategoriesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new System.Exception("Database error"));
+
+        // Act
+        var result = await _controller.GetCategories(CancellationToken.None);
+
+        // Assert
+        Assert.That(result, Is.TypeOf<ObjectResult>());
+        var objectResult = result as ObjectResult;
+        Assert.That(objectResult.StatusCode, Is.EqualTo(500));
+        Assert.That(objectResult.Value, Is.EqualTo("An error occurred while fetching categories."));
+    }
+
+    [Test]
+    public async Task GetCategory_ShouldReturnOk_WhenCategoryExists()
+    {
+        // Arrange
+        var category = new Category { CategoryId = 1, CategoryName = "Beverages" };
+        _categoryServiceMock
+            .Setup(service => service.GetCategoryAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(category);
+
+        // Act
+        var result = await _controller.GetCategory(1, CancellationToken.None);
+
+        // Assert
+        Assert.That(result, Is.TypeOf<OkObjectResult>());
+        var okResult = result as OkObjectResult;
+        Assert.That(okResult.Value, Is.EqualTo(category));
+    }
+
+    [Test]
+    public async Task GetCategory_ShouldReturnNotFound_WhenCategoryDoesNotExist()
+    {
+        // Arrange
+        _categoryServiceMock
+            .Setup(service => service.GetCategoryAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Category)null);
+
+        // Act
+        var result = await _controller.GetCategory(1, CancellationToken.None);
+
+        // Assert
+        Assert.That(result, Is.TypeOf<NotFoundObjectResult>());
+        var notFoundResult = result as NotFoundObjectResult;
+        Assert.That(notFoundResult.Value, Is.EqualTo("Category with ID 1 not found."));
+    }
+
+    [Test]
+    public async Task UpdateCategoryImage_ShouldReturnNoContent_WhenImageIsUpdatedSuccessfully()
     {
         // Arrange
         var category = new Category { CategoryId = 1 };
-        _mockCategoryService.Setup(service => service.GetCategoryAsync(1, It.IsAny<CancellationToken>()))
-                            .ReturnsAsync(category);
+        var mockFile = new Mock<IFormFile>();
+        mockFile.Setup(file => file.Length).Returns(1024);
+        mockFile.Setup(file => file.OpenReadStream()).Returns(new System.IO.MemoryStream(new byte[1024]));
+
+        _categoryServiceMock
+            .Setup(service => service.GetCategoryAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(category);
+        _categoryServiceMock
+            .Setup(service => service.UpdateCategoryImageAsync(1, It.IsAny<byte[]>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true); 
 
         // Act
-        var result = await _controller.Edit(1) as ViewResult;
+        var result = await _controller.UpdateCategoryImage(1, mockFile.Object, CancellationToken.None);
 
         // Assert
-        Assert.That(result, Is.Not.Null);
-        Assert.That(category, Is.EqualTo(result.Model));
+        Assert.That(result, Is.TypeOf<NoContentResult>());
     }
 
     [Test]
-    public async Task Edit_POST_RedirectsToIndex_WhenImageIsUploaded()
+    public async Task UpdateCategoryImage_ShouldReturnNotFound_WhenCategoryDoesNotExist()
     {
         // Arrange
-        var categoryId = 1;
-        var imageFile = new Mock<IFormFile>();
-        var memoryStream = new MemoryStream(new byte[] { 0, 1, 2, 3 });
-        imageFile.Setup(f => f.Length).Returns(memoryStream.Length);
-        imageFile.Setup(f => f.CopyToAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
-                 .Callback<Stream, CancellationToken>((stream, token) => memoryStream.CopyTo(stream));
+        var mockFile = new Mock<IFormFile>();
+        mockFile.Setup(file => file.Length).Returns(1024);
+        mockFile.Setup(file => file.OpenReadStream()).Returns(new System.IO.MemoryStream(new byte[1024]));
+        _categoryServiceMock
+            .Setup(service => service.GetCategoryAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Category)null);
 
         // Act
-        var result = await _controller.Edit(categoryId, imageFile.Object) as RedirectToActionResult;
+        var result = await _controller.UpdateCategoryImage(1, mockFile.Object, CancellationToken.None);
 
         // Assert
-        Assert.That(result, Is.Not.Null);
-        Assert.That("Index", Is.EqualTo(result.ActionName));
-        _mockCategoryService.Verify(service => service.UpdateCategoryImageAsync(categoryId, It.IsAny<byte[]>(), CancellationToken.None), Times.Once);
+        Assert.That(result, Is.TypeOf<NotFoundObjectResult>());
+        var notFoundResult = result as NotFoundObjectResult;
+        Assert.That(notFoundResult.Value, Is.EqualTo("Category with ID 1 not found."));
     }
 
     [Test]
-    public async Task Edit_POST_RedirectsToIndex_WhenNoImageIsUploaded()
+    public async Task UpdateCategoryImage_ShouldReturnBadRequest_WhenFileIsNullOrEmpty()
     {
         // Arrange
-        var categoryId = 1;
-        var imageFile = (IFormFile)null; // No file
+        IFormFile file = null;
 
         // Act
-        var result = await _controller.Edit(categoryId, imageFile) as RedirectToActionResult;
+        var result = await _controller.UpdateCategoryImage(1, file, CancellationToken.None);
 
         // Assert
-        Assert.That(result, Is.Not.Null);
-        Assert.That("Index", Is.EqualTo(result.ActionName));
-        _mockCategoryService.Verify(service => service.UpdateCategoryImageAsync(It.IsAny<int>(), It.IsAny<byte[]>(), CancellationToken.None), Times.Never);
+        Assert.That(result, Is.TypeOf<BadRequestObjectResult>());
+        var badRequestResult = result as BadRequestObjectResult;
+        Assert.That(badRequestResult.Value, Is.EqualTo("File cannot be null or empty."));
     }
 }

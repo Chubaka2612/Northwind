@@ -8,6 +8,8 @@ using Northwind.Logger;
 using Northwind.Utils.Caching;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Caching.Memory;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Builder;
 
 
 public class Startup
@@ -34,48 +36,62 @@ public class Startup
         services.AddScoped<ISupplierService, SupplierService>();
 
         services.Configure<ImageCachingOptions>(Configuration.GetSection("ImageCachingOptions"));
-        services.AddMemoryCache(); 
+        services.AddMemoryCache();
 
+        // Add Logging Action Filter if enabled
         if (Configuration.GetSection("LogActionFilterOn").Value.Equals("true", StringComparison.InvariantCultureIgnoreCase))
         {
             services.AddScoped(sp => new LoggingActionFilter(sp.GetRequiredService<ILogger<LoggingActionFilter>>(), logParameters: true));
-
-            services.AddControllersWithViews(options =>
-            {
-                options.Filters.AddService<LoggingActionFilter>();
-            });
         }
-        services.AddHttpContextAccessor();
-        services.AddMvc();
+
+        services.AddControllers()
+            .AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+            });
+
+        // Register NSwag for OpenAPI/Swagger documentation /swagger/v1/swagger.json
+        services.AddOpenApiDocument(config =>
+        {
+            config.Title = "Northwind API";
+            config.Version = "v1";
+            config.Description = "API documentation for the Northwind project.";
+        });
     }
 
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILogger<Startup> logger)
     {
+        // Log application startup
         logger.LogInformation("Application starting up. Location: {Location}", Directory.GetCurrentDirectory());
 
-        var imageCachingOptions = app.ApplicationServices.GetRequiredService<IOptions<ImageCachingOptions>>().Value;
-
+        // Log configuration values
         var configValues = Configuration.AsEnumerable()
             .Where(c => !string.IsNullOrWhiteSpace(c.Value))
             .Select(c => $"{c.Key}: {c.Value}")
             .ToList();
         logger.LogInformation("Configuration values: {ConfigValues}", string.Join(", ", configValues));
 
-        app.UseMiddleware<ErrorHandlerMiddleware>();
+        app.UseRouting();
+        app.UseAuthorization();
 
         app.UseMiddleware<ImageCachingMiddleware>(
             app.ApplicationServices.GetRequiredService<ILogger<ImageCachingMiddleware>>(),
             app.ApplicationServices.GetRequiredService<IMemoryCache>(),
-            imageCachingOptions);
+            app.ApplicationServices.GetRequiredService<IOptions<ImageCachingOptions>>().Value);
 
+        DefaultFilesOptions options = new DefaultFilesOptions();
+        options.DefaultFileNames.Clear();
+        options.DefaultFileNames.Add("index.html");
+        app.UseDefaultFiles(options);
         app.UseStaticFiles();
-        app.UseRouting();
+
+        app.UseOpenApi(); 
+        app.UseSwaggerUi(); 
 
         app.UseEndpoints(endpoints =>
         {
-            endpoints.MapControllerRoute(
-                name: "default",
-                pattern: "{controller=Home}/{action=Index}/{id?}");
+            endpoints.MapControllers();
         });
     }
 }
+

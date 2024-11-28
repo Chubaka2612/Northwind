@@ -4,64 +4,96 @@ using Northwind.Bll.Abstractions;
 
 namespace Northwind.Web.Controllers
 {
-  
-    public class CategoriesController : Controller
+
+    [ApiController]
+    [Route("api/northwind/categories")]
+    public class CategoriesController : ControllerBase
     {
+        private readonly ILogger<CategoriesController> _logger;
         private readonly ICategoryService _categoryService;
-   
-        public CategoriesController(ICategoryService categoryService)
+
+        public CategoriesController(ICategoryService categoryService, ILogger<CategoriesController> logger)
         {
-            _categoryService = categoryService;
-        }
-
-        public async Task<IActionResult> Index(CancellationToken cancellationToken)
-        {
-            return View(await _categoryService.GetCategoriesAsync(cancellationToken));
-        }
-
-        [Route("Image/{id?}")]
-        [Route("{controller}/{action}/{id?}")]
-        public async Task<IActionResult> Image([FromRoute] int? id)
-        {
-            var category = (await _categoryService.GetCategoriesAsync(CancellationToken.None))
-                           .FirstOrDefault(c => c.CategoryId == id);
-
-            if (category == null || category.Picture == null)
-            {
-                return NotFound();
-            }
-
-            // Skip first 78 bytes if the image is corrupted
-            var fixedImage = category.Picture.Skip(78).ToArray();
-
-            return File(fixedImage, "image/bmp");
+            _categoryService = categoryService ?? throw new ArgumentNullException(nameof(categoryService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [HttpGet]
-        public async Task<IActionResult> Edit(int id)
+        public async Task<IActionResult> GetCategories(CancellationToken cancellationToken)
         {
-            var category = await _categoryService.GetCategoryAsync(id, CancellationToken.None);
-            if (category == null)
+            try
             {
-                return NotFound();
+                var categories = await _categoryService.GetCategoriesAsync(cancellationToken);
+                if (categories == null || !categories.Any())
+                {
+                    _logger.LogWarning("No categories found.");
+                    return NotFound("No categories available.");
+                }
+
+                return Ok(categories);
             }
-            return View(category);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching categories");
+                return StatusCode(500, "An error occurred while fetching categories.");
+            }
         }
 
-        [HttpPost]
-        public async Task<IActionResult> Edit(int id, IFormFile newImage)
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetCategory([FromRoute] int id, CancellationToken cancellationToken)
         {
-            if (newImage != null && newImage.Length > 0)
+            try
             {
-                using (var stream = new MemoryStream())
+                var category = await _categoryService.GetCategoryAsync(id, cancellationToken);
+                if (category == null)
                 {
-                    await newImage.CopyToAsync(stream);
-                    var imageBytes = stream.ToArray();
-                    await _categoryService.UpdateCategoryImageAsync(id, imageBytes, CancellationToken.None);
+                    _logger.LogWarning($"Category with ID {id} not found.");
+                    return NotFound($"Category with ID {id} not found.");
                 }
+
+                return Ok(category);
             }
-            return RedirectToAction(nameof(Index));
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error fetching category by ID {id}");
+                return StatusCode(500, "An error occurred while fetching the category.");
+            }
+        }
+
+        [HttpPut("{id:int}/image")]
+        public async Task<IActionResult> UpdateCategoryImage([FromRoute] int id, [FromForm] IFormFile file, CancellationToken cancellationToken)
+        {
+            if (file == null || file.Length == 0)
+            {
+                _logger.LogWarning($"Invalid file input for category ID {id}.");
+                return BadRequest("File cannot be null or empty.");
+            }
+
+            try
+            {
+                var category = await _categoryService.GetCategoryAsync(id, cancellationToken);
+                if (category == null)
+                {
+                    _logger.LogWarning($"Category with ID {id} not found.");
+                    return NotFound($"Category with ID {id} not found.");
+                }
+
+                byte[] imageData;
+                using (var binaryReader = new BinaryReader(file.OpenReadStream()))
+                {
+                    imageData = binaryReader.ReadBytes((int)file.Length);
+                }
+
+                category.Picture = imageData;
+                await _categoryService.UpdateCategoryImageAsync(id, imageData, cancellationToken);
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error updating image for category ID {id}");
+                return StatusCode(500, "An error occurred while updating the category image.");
+            }
         }
     }
 }
-
