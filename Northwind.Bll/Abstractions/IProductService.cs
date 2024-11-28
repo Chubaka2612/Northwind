@@ -12,5 +12,7 @@ namespace Northwind.Bll.Abstractions
 
         Task<bool> UpdateProductAsync(Product product);
 
+        Task<bool> DeleteProductAsync(Product product);
+
     }
 }

@@ -1,0 +1,116 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories and Products</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .section {
+            width: 45%;
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            padding: 8px;
+            border: 1px solid #ddd;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Categories and Products</h1>
+
+    <div class="container">
+        <div class="section" id="categories-section">
+            <h2>Categories</h2>
+            <ul id="categories-list">
+             
+            </ul>
+        </div>
+
+        <div class="section" id="products-section">
+            <h2>Products</h2>
+            <ul id="products-list">
+       
+            </ul>
+        </div>
+    </div>
+
+    <script>
+
+        async function fetchCategories() {
+            const categoriesUrl = 'https://localhost:7291/api/northwind/categories'; 
+            try {
+                const response = await fetch(categoriesUrl);
+                if (!response.ok) {
+                    throw new Error('Error fetching categories');
+                }
+                const categories = await response.json();
+                displayCategories(categories);
+            } catch (error) {
+                console.error(error);
+                alert('Error fetching categories');
+            }
+        }
+
+        async function fetchProducts() {
+            const productsUrl = 'https://localhost:7291/api/northwind/products';
+            try {
+                const response = await fetch(productsUrl);
+                if (!response.ok) {
+                    throw new Error('Error fetching products');
+                }
+                const products = await response.json();
+                displayProducts(products);
+            } catch (error) {
+                console.error(error);
+                alert('Error fetching products');
+            }
+        }
+
+        function displayCategories(categories) {
+            const categoriesList = document.getElementById('categories-list');
+            categoriesList.innerHTML = ''; // Clear previous data
+            categories.forEach(category => {
+                const li = document.createElement('li');
+                li.textContent = `ID: ${category.categoryId}, Name: ${category.categoryName}, Description: ${category.description}`;
+                categoriesList.appendChild(li);
+            });
+        }
+
+        function displayProducts(products) {
+            const productsList = document.getElementById('products-list');
+            productsList.innerHTML = '';
+            products.forEach(product => {
+                const li = document.createElement('li');
+                li.textContent = `ID: ${product.productId}, Name: ${product.productName}, Price: ${product.unitPrice}`;
+                productsList.appendChild(li);
+            });
+        }
+
+        // Fetch and display both categories and products when the page loads
+        fetchCategories();
+        fetchProducts();
+    </script>
+
+</body>
+</html>

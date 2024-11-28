@@ -23,11 +23,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Northwind.Domain", "Northwi
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Northwind.Logger", "Northwind.Logger\Northwind.Logger.csproj", "{F5B2113C-2CD3-4B5A-8559-4073FE48CDB2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Northwind.Utils", "Northwind.Utils\Northwind.Utils.csproj", "{D81A8840-657C-4141-9461-AFFB98A50C41}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Northwind.Utils", "Northwind.Utils\Northwind.Utils.csproj", "{D81A8840-657C-4141-9461-AFFB98A50C41}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{7BA94D12-B423-48E2-A78A-24FCFBD1ED91}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Northwind.Tests", "Northwind.Tests\Northwind.Tests.csproj", "{587AA5A0-3ED1-4451-912A-378C77B806AA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Northwind.Tests", "Northwind.Tests\Northwind.Tests.csproj", "{587AA5A0-3ED1-4451-912A-378C77B806AA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Northwind.Console.Client", "Northwind.Console.Client\Northwind.Console.Client.csproj", "{29920857-56FC-4E67-81BC-2F02E0B1D4D7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -63,6 +65,10 @@ Global
 		{587AA5A0-3ED1-4451-912A-378C77B806AA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{587AA5A0-3ED1-4451-912A-378C77B806AA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{587AA5A0-3ED1-4451-912A-378C77B806AA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{29920857-56FC-4E67-81BC-2F02E0B1D4D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{29920857-56FC-4E67-81BC-2F02E0B1D4D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{29920857-56FC-4E67-81BC-2F02E0B1D4D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{29920857-56FC-4E67-81BC-2F02E0B1D4D7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -79,6 +85,7 @@ Global
 		{F5B2113C-2CD3-4B5A-8559-4073FE48CDB2} = {4132C6BB-F702-4813-ADBE-81ABC8922D98}
 		{D81A8840-657C-4141-9461-AFFB98A50C41} = {4132C6BB-F702-4813-ADBE-81ABC8922D98}
 		{587AA5A0-3ED1-4451-912A-378C77B806AA} = {7BA94D12-B423-48E2-A78A-24FCFBD1ED91}
+		{29920857-56FC-4E67-81BC-2F02E0B1D4D7} = {8138648A-AA99-4A0C-BA5C-E1A31634BE07}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5A0B47A0-A222-4AC5-9B5D-7F0FA9C635AD}

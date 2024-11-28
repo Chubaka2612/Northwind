@@ -38,7 +38,6 @@ namespace Northwind.Bll.Services
             if (category == null)
             {
                 throw new KeyNotFoundException($"Category with ID {id} not found.");
-                return false;
             }
 
             category.Picture = imageBytes;
